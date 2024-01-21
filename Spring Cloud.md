@@ -1114,3 +1114,145 @@ public class HelloHandler {
 
 - 之后就可以通过访问该接口获取port信息
 
+
+
+
+
+# 六、服务跟踪
+
+Spring Cloud Zipkin：分为Server和Client
+
+
+
+## 1、搭建Zipkin Server
+
+- 创建 Maven 工程，pom.xml如下：
+
+```xml
+	<artifactId>zipkin</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>io.zipkin.java</groupId>
+            <artifactId>zipkin-server</artifactId>
+            <version>2.9.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.zipkin.java</groupId>
+            <artifactId>zipkin-autoconfigure-ui</artifactId>
+            <version>2.9.4</version>
+        </dependency>
+	</dependencies>
+```
+
+- 创建配置文件application.yml
+
+```yml
+server:
+  port: 9090
+```
+
+- 创建启动类
+
+```java
+@SpringBootApplication
+@EnableZipkinServer
+public class ZipkinApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ZipkinApplication.class, args);
+    }
+}
+```
+
+
+
+## 2、搭建Zipkin Client
+
+- 创建 Maven 工程，pom.xml如下：
+
+```xml
+	<artifactId>zipkinclient</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-zipkin</artifactId>
+            <version>2.0.2.RELEASE</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+            <version>2.0.2.RELEASE</version>
+        </dependency>
+    </dependencies>
+```
+
+- 创建 Maven 工程，pom.xml如下：
+
+```yml
+server:
+  port: 8090
+spring:
+  application:
+    name: zipkinclient
+  sleuth:
+    web:
+      client:
+        enabled: true
+    sampler:
+      probability: 1.0
+  zipkin:
+    base-url: http://localhost:9090/
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+```
+
+>属性说明：
+
+`spring.sleuth.web.client.enabled`：设置开启请求跟踪
+
+`spring.sleuth.sampler.probability`：设置采样比例，默认是1.0
+
+`spring.zipkin.base-url`：Zipkin Server 地址
+
+- 创建启动类
+
+```java
+@SpringBootApplication
+public class ZipkinClient {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ZipkinClient.class, args);
+    }
+}
+```
+
+- Handler
+
+```java
+@RestController
+@RequestMapping("/zipkin")
+public class ZipkinHandler {
+
+    @Value("${server.port}")
+    private String port;
+
+    @GetMapping("/index")
+    public String index() {
+        return this.port;
+    }
+}
+```
+
+>所有服务启动后，访问`http://localhost:9090/zipkin/`，能看到一个后台，通过 Find Traces 可以跟踪请求
+
